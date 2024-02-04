@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Blockchain Network</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { width: 80%; margin: auto; text-align: center; }
+        #response { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>P2P Blockchain Network</h1>
+        <div>
+            <input type="number" id="portInput" placeholder="Enter Port Number" required>
+            <button onclick="createPeer()">Create Peer</button>
+        </div>
+        <div id="response"></div>
+    </div>
+
+    <script>
+        function createPeer() {
+            var port = $('#portInput').val();
+            if (!port) {
+                alert("Please enter a port number.");
+                return;
+            }
+            $.ajax({
+                url: '/create_node',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ port: port }),
+                success: function(response) {
+                    if (response.success) {
+                        window.open('/node/' + port, '_blank');
+                    } else {
+                        alert(response.message);
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

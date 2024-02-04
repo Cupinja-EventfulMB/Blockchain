@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Node - Port {{ port }}</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { width: 80%; margin: auto; text-align: center; }
+        #blockchainInfo { 
+            margin-top: 20px; 
+            white-space: pre-wrap; 
+            text-align: left; 
+            overflow-y: scroll; 
+            height: 500px; 
+            border: 1px solid #ccc; 
+            padding: 10px;
+            background-color: #f9f9f9; 
+        }
+        .block {
+            border: 1px solid #5a2828; 
+            padding: 10px;
+            margin-bottom: 10px; 
+            background-color: #e7e7e7; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>P2P Node on Port {{ port }}</h1>
+        <button onclick="displayBlockchain()">Display Blockchain</button>
+        <button onclick="stopNode()">Stop Node</button> 
+        <input type="text" id="nodeAddress" placeholder="Enter node port">
+        <button onclick="connectToNode()">Connect to Node</button>
+        <input type="text" id="blockData" placeholder="Enter data to mine">
+        <button onclick="mineNewData()">Mine New Data</button>
+        <button onclick="stopMining()">Stop Mining</button> 
+        <button onclick="mineOneBlock()">Mine One Block</button>
+        <div id="connectedPeers">
+            <h2>Help mine peer:</h2>
+            <ul id="peersList"></ul>
+        </div>
+        <div id="blockchainInfo"></div>
+        <div id="hashDisplay" style="height: 100px; color: red; overflow: hidden;"></div>
+    </div>
+
+    <script>
+        function displayBlockchain() {
+        console.log("Requesting blockchain for port: " + "{{ port }}");
+        $.ajax({
+            url: '/display_blockchain',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ port: "{{ port }}" }), 
+            success: function(response) {
+                console.log("Response received:", response);
+                if (response.success) {
+                    var blockchain = response.blockchain;
+                    var blockchainHTML = "";
+                    blockchain.forEach(function(block) {
+                        blockchainHTML += '<div class="block" id="latestBlock">';
+                        blockchainHTML += `Index: ${block.index}<br>`;
+                        blockchainHTML += `Timestamp: ${block.timestamp}<br>`;
+                        blockchainHTML += `Data: ${block.data}<br>`;
+                        blockchainHTML += `Previous Hash: ${block.previous_hash}<br>`;
+                        blockchainHTML += `Hash: ${block.hash}<br>`;
+                        blockchainHTML += `Difficulty: ${block.difficulty}<br>`;
+                        blockchainHTML += `Token: ${block.token}<br>`;
+                        blockchainHTML += '</div>';
+                    });
+                    $('#blockchainInfo').html(blockchainHTML);
+
+                    blockchainInfoDiv.scrollTop(blockchainInfoDiv[0].scrollHeight);
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX Error:", status, error);
+            }
+        });
+    }
+
+
+        function stopNode() {
+            console.log("Stopping node on port: " + "{{ port }}");
+            $.ajax({
+                url: '/stop_node',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ port: "{{ port }}" }),
+                success: function(response) {
+                    console.log("Response received:", response);
+                    if (response.success) {
+                        alert("Node stopped successfully.");
+                        window.location.href = '/'; 
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX Error:", status, error);
+                }
+            });
+        }
+
+        function connectToNode() {
+            var nodeAddress = document.getElementById('nodeAddress').value;
+            var host = "{{ port }}";
+            var port = nodeAddress;
+
+            if (!host || !port) {
+                alert("Please enter a valid node address in the format host:port");
+                return;
+            }
+
+            $.ajax({
+                url: '/connect_node',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ host: host, port: port }),
+                success: function(response) {
+                    console.log("Response received:", response);
+                    if (response.success) {
+                        alert("Connected to node successfully.");
+                        updateConnectedPeers();
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX Error:", status, error);
+                }
+            });
+        }
+
+
+        function updateConnectedPeers() {
+            $.ajax({
+                url: '/get_connected_peers',
+                type: 'GET',
+                data: { port: "{{ port }}" },
+                success: function(response) {
+                    if (response.success) {
+                        var peersList = response.peers;
+                        var html = "";
+                        peersList.forEach(function(peer) {
+                            html += `<li>${peer}</li>`;
+                        });
+                        document.getElementById('peersList').innerHTML = html;
+                    } else {
+                        console.error(response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX Error:", status, error);
+                }
+            });
+        }
+
+        function generateRandomHash() {
+            var hash = '';
+            var characters = '0123456789abcdef';
+            for (var i = 0; i < 64; i++) {
+                hash += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            return hash;
+        }
+
+        /*
+        function mineNewData() {
+            var data = document.getElementById('blockData').value;
+            console.log("Mining new block with data:", data);
+
+            var hashDisplayInterval = setInterval(function() {
+                var hashDisplay = document.getElementById('hashDisplay');
+                hashDisplay.innerHTML = generateRandomHash() + hashDisplay.innerHTML;
+                hashDisplay.scrollTop = 0;
+            }, 10);
+
+            $.ajax({
+                url: '/mine_block',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ port: "{{ port }}", data: data }),
+                success: function(response) {
+                    console.log("Response received:", response);
+                    clearInterval(hashDisplayInterval); 
+                    if (response.success) {
+                        document.getElementById('hashDisplay').innerHTML = '';
+                        displayBlockchain();
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    clearInterval(hashDisplayInterval); 
+                    console.error("AJAX Error:", status, error);
+                }
+            });
+        }  */
+
+        var hashDisplayInterval;
+
+        function mineNewData() {
+            var data = document.getElementById('blockData').value;
+            var port = "{{ port }}";
+
+            console.log("Starting mining process with data:", data);
+
+            hashDisplayInterval = setInterval(function() {
+                hashDisplay = document.getElementById('hashDisplay');
+                hashDisplay.innerHTML = generateRandomHash() + hashDisplay.innerHTML;
+                hashDisplay.scrollTop = 0;
+            }, 10);
+
+            $.ajax({
+                url: '/start_mining',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ port: port, data: data }),
+                success: function(response) {
+                    console.log("Response received:", response);
+                    if (response.success) {
+                        alert("Mining process started successfully.");
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX Error:", status, error);
+                }
+            });
+        }
+
+        function stopMining() {
+            var port = "{{ port }}"; 
+
+            console.log("Stopping mining process.");
+
+            $.ajax({
+                url: '/stop_mining',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ port: port }),
+                success: function(response) {
+                    console.log("Response received:", response);
+                    if (response.success) {
+                        alert("Mining process stopped successfully.");
+                        clearInterval(hashDisplayInterval);
+                        var hashDisplay = document.getElementById('hashDisplay');
+                        hashDisplay.innerHTML = "";
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX Error:", status, error);
+                }
+            });
+        }
+
+        function mineOneBlock() {
+            var data = document.getElementById('blockData').value;
+            var port = "{{ port }}";
+
+            console.log("Starting mining one block with data:", data);
+
+            $.ajax({
+                url: '/mine_block', 
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ port: port, data: data }),
+                success: function(response) {
+                    console.log("Response received:", response);
+                    if (response.success) {
+                        alert("One block mined successfully.");
+                        displayBlockchain();
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX Error:", status, error);
+                }
+            });
+        }
+
+    </script>
+</body>
+</html>
